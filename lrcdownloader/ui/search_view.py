@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (QFileDialog, QHBoxLayout, QLabel, QListWidget,
 from lrcdownloader.config import Settings
 from lrcdownloader.core.batch import build_providers
 from lrcdownloader.core.providers.base import LrcResult
-from lrcdownloader.core.providers.lrclib import LrclibProvider
+from lrcdownloader.ui.lrcred_prompt import ensure_lrcred_contact
 
 
 class SearchView(QWidget):
@@ -47,24 +47,22 @@ class SearchView(QWidget):
         if not query:
             return
         self.cands = []
-        try:
-            self.cands.extend(LrclibProvider(timeout_s=self.cfg.timeout_s).search_text(query))
-        except Exception as e:  # noqa: BLE001
-            self.emit_log(f"LRCLIB search failed: {e}")
-        # syncedlyrics text search = per-provider single-shot via adapter search()
+        if "lrcred" in self.cfg.provider_order and not ensure_lrcred_contact(self, self.cfg):
+            self.emit_log("lrc.red skipped: no contact email set.")
         if " - " in query:
             artist, title = [s.strip() for s in query.split(" - ", 1)]
         else:
             title, artist = query, ""
         for p in build_providers(self.cfg):
-            if p.name == "lrclib":
-                continue
             try:
-                r = p.search(title, artist)
-                if r:
-                    self.cands.append(r)
-            except Exception:
-                continue
+                found = p.search_text(query)
+                if not found:
+                    r = p.search(title, artist)
+                    found = [r] if r else []
+                self.cands.extend(found)
+            except Exception as e:  # noqa: BLE001
+                self.emit_log(f"{p.name} search failed: {e}")
+        self.cands.sort(key=lambda r: (r.synced, r.score), reverse=True)
         self.list.clear()
         for c in self.cands:
             self.list.addItem(f"[{c.kind}] {c.source}  ({len(c.lrc_text.splitlines())} lines)")

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 class LrcResult:
     lrc_text: str
     kind: str  # plain/synced/enhanced
-    source: str  # 'lrclib' | 'syncedlyrics:NetEase' | 'spotify'
+    source: str  # 'lrclib' | 'lrc.red' | 'netease' | 'qq' | 'syncedlyrics:NetEase' | 'spotify'
     score: float = 0.0  # 0..1 match quality
     plain_text: str = ""
 

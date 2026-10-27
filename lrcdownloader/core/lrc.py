@@ -45,6 +45,21 @@ def strip_tags(text: str) -> str:
     return "\n".join(out)
 
 
+_INSTRUMENTAL_MARKERS = (
+    "纯音乐", "没有填词", "此歌曲为没有填词的纯音乐", "无歌词",
+    "版权原因", "instrumental", "no lyrics",
+)
+
+
+def looks_instrumental(text: str) -> bool:
+    """Detect placeholder lyrics for instrumental tracks (short text only)."""
+    plain = strip_tags(text)
+    if not plain or len(plain) > 200:
+        return False
+    low = plain.lower()
+    return any(marker in low for marker in _INSTRUMENTAL_MARKERS)
+
+
 def validate_lrc(text: str, *, require_synced: bool = False) -> tuple[bool, str]:
     kind = classify_lrc(text)
     if kind == "none":

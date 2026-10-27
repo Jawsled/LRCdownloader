@@ -13,6 +13,7 @@ from lrcdownloader.config import Settings
 from lrcdownloader.core.batch import BatchRunner
 from lrcdownloader.core.metadata import SUPPORTED_SUFFIXES
 from lrcdownloader.core.scanner import SongRecord, scan_sources
+from lrcdownloader.ui.lrcred_prompt import ensure_lrcred_contact
 
 
 class Worker(QObject):
@@ -200,6 +201,8 @@ class LibraryView(QWidget):
         if not targets:
             self.log.emit("Nothing to fetch.")
             return
+        if "lrcred" in self.cfg.provider_order and not ensure_lrcred_contact(self, self.cfg):
+            self.log.emit("lrc.red skipped: no contact email set.")
         self.thread = QThread(self)
         self.worker = Worker(targets, self.cfg)
         self.worker.moveToThread(self.thread)

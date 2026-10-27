@@ -12,7 +12,10 @@ from lrcdownloader.core import embed as embed_utils
 from lrcdownloader.core import lrc as lrc_utils
 from lrcdownloader.core.providers.base import LrcResult
 from lrcdownloader.core.providers.lrclib import LrclibProvider
+from lrcdownloader.core.providers.lrcred import LrcRedProvider
 from lrcdownloader.core.providers.matcher import fetch_first
+from lrcdownloader.core.providers.netease import NeteaseProvider
+from lrcdownloader.core.providers.qq import QQProvider
 from lrcdownloader.core.providers.spotify_api import SpotifyLyricsProvider
 from lrcdownloader.core.providers.syncedlyrics_adapter import SyncedLyricsProvider
 from lrcdownloader.core.scanner import SongRecord
@@ -38,6 +41,13 @@ def build_providers(cfg: Settings):
     order = cfg.provider_order
     if "lrclib" in order:
         providers.append(LrclibProvider(timeout_s=cfg.timeout_s))
+    if "lrcred" in order:
+        providers.append(LrcRedProvider(timeout_s=cfg.timeout_s,
+                                        contact=cfg.lrcred_contact))
+    if "netease" in order:
+        providers.append(NeteaseProvider(timeout_s=cfg.timeout_s))
+    if "qq" in order:
+        providers.append(QQProvider(timeout_s=cfg.timeout_s))
     if "syncedlyrics" in order:
         providers.append(SyncedLyricsProvider(providers=cfg.syncedlyrics_providers))
     if "spotify" in order:

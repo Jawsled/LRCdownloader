@@ -6,7 +6,7 @@ A simple Qt6 GUI application to download lyrics for your local library.
 - **Respects your naming scheme:** `01 - Title.flac` → `01 - Title.lrc` next to your tracks. respects your folder structure and file naming scheme.
 - **Embed-kind-aware skip:** embedded lyrics are classified as `none / plain / synced / enhanced`; a plain embed does NOT block a synced fetch (configurable).
 - **Import:** Drag and drop or pick folders/files to import files for the session. `Clear` removes all imported tracks.
-- **Sources chain:** LRCLIB → syncedlyrics providers (NetEase/Musixmatch/Megalobiz/Lrclib) → Spotify Lyrics API (opt-in, needs `SP_DC`).
+- **Sources chain:** LRCLIB → lrc.red → NetEase → QQ Music → syncedlyrics providers (Musixmatch/Megalobiz/LRCLIB) → Spotify Lyrics API (opt-in, needs `SP_DC`). Provider order and toggles live in **Settings**.
 
 ## Run from source
 
@@ -87,3 +87,17 @@ Actions run.
 - syncedlyrics: https://github.com/moehmeni/syncedlyrics
 - spotify-lyrics-api: https://github.com/akashrchandran/spotify-lyrics-api
 - LRCLIB: https://lrclib.net/docs
+- lrc.red: https://lrc.red/docs
+- NetEase Cloud Music (unofficial web API)
+- QQ Music (unofficial web API)
+
+### Provider notes
+
+- **lrc.red** requires e-mail address to identify themselves to prevent abuse. The app prompts for that email the first time lrc.red is
+  used; cancel the prompt to skip lrc.red for that request. You can also set it
+  in **Settings → lrc.red contact email**. Lyrics fetched from lrc.red are
+  labelled `lrc.red` in the app. Only line/word-synced entries are used (its
+  untimed entries are not readable).
+- **NetEase** and **QQ Music** use unofficial web endpoints. They greatly improve
+  Chinese/CJK coverage but may be rate-limited, geo-blocked, or changed without
+  notice. Untick them in Settings if you do not wish to use them.

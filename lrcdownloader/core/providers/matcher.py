@@ -42,12 +42,15 @@ def pick_best(cands: list[LrcResult], cfg: Settings) -> LrcResult | None:
 
 def fetch_first(providers, title: str, artist: str, album: str,
                 duration_s: float, cfg: Settings) -> LrcResult | None:
-    """Sequential fallback (simple, rate-limit friendly). Parallel fan-out lives in batch.py."""
+    """Sequential fallback (simple, rate-limit friendly). Parallel fan-out lives in batch.py.
+
+    Keeps the first plain result as a fallback but keeps looking for a synced
+    one, so a plain LRCLIB hit does not hide a synced lrc.red/NetEase/QQ hit.
+    """
+    plain_fallback: LrcResult | None = None
     for p in providers:
-        if p.name not in cfg.provider_order and not p.name.startswith("syncedlyrics"):
-            # syncedlyrics adapter covers several upstream names under one toggle 'syncedlyrics'
-            if "syncedlyrics" not in cfg.provider_order:
-                continue
+        if p.name not in cfg.provider_order:
+            continue
         try:
             res = p.search(title, artist, album, duration_s)
         except Exception:
@@ -57,5 +60,8 @@ def fetch_first(providers, title: str, artist: str, album: str,
         if cfg.synced_only and not res.synced:
             continue
         res.score = score_result(res, title, artist, duration_s, cfg.duration_tolerance_s)
-        return res
-    return None
+        if res.synced:
+            return res
+        if plain_fallback is None:
+            plain_fallback = res
+    return plain_fallback

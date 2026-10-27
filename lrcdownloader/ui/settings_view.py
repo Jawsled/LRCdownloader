@@ -1,12 +1,28 @@
 """Settings tab: providers, skip policy, output, Spotify creds."""
 from __future__ import annotations
 
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QFormLayout, QHBoxLayout,
-                               QLabel, QLineEdit, QPushButton, QSpinBox,
-                               QVBoxLayout, QWidget)
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox,
+                               QFormLayout, QHBoxLayout, QLabel, QLineEdit,
+                               QListWidget, QListWidgetItem, QPushButton,
+                               QSpinBox, QVBoxLayout, QWidget)
 
-from lrcdownloader.config import Settings
+from lrcdownloader.config import KNOWN_PROVIDERS, Settings
 from lrcdownloader.credentials import get_secret, set_secret
+
+PROVIDER_LABELS = {
+    "lrclib": "LRCLIB (default, no key)",
+    "lrcred": "lrc.red (free, no key)",
+    "netease": "NetEase Cloud Music (unofficial)",
+    "qq": "QQ Music (unofficial)",
+    "syncedlyrics": "syncedlyrics (Musixmatch/Megalobiz/...)",
+    "spotify": "Spotify (opt-in, needs SP_DC)",
+}
+
+
+def _ordered_providers(order: list[str]) -> list[str]:
+    known = [p for p in order if p in KNOWN_PROVIDERS]
+    return known + [p for p in KNOWN_PROVIDERS if p not in known]
 
 
 class SettingsView(QWidget):
@@ -40,6 +56,37 @@ class SettingsView(QWidget):
         self.conc.setValue(cfg.concurrency)
         form.addRow("Concurrency:", self.conc)
 
+        self.providers = QListWidget()
+        self.providers.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self.providers.setMinimumHeight(130)
+        self.providers.setMaximumHeight(170)
+        for p in _ordered_providers(cfg.provider_order):
+            item = QListWidgetItem(PROVIDER_LABELS.get(p, p))
+            item.setData(Qt.ItemDataRole.UserRole, p)
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(
+                Qt.CheckState.Checked if p in cfg.provider_order
+                else Qt.CheckState.Unchecked
+            )
+            self.providers.addItem(item)
+
+        pbox = QWidget()
+        pbox_layout = QVBoxLayout(pbox)
+        pbox_layout.setContentsMargins(0, 0, 0, 0)
+        pbox_layout.addWidget(self.providers)
+        prow = QHBoxLayout()
+        self.btn_up = QPushButton("Move up")
+        self.btn_down = QPushButton("Move down")
+        prow.addWidget(self.btn_up)
+        prow.addWidget(self.btn_down)
+        prow.addStretch(1)
+        pbox_layout.addLayout(prow)
+        form.addRow("Provider fallback order:", pbox)
+
+        self.lrcred_contact = QLineEdit(cfg.lrcred_contact)
+        self.lrcred_contact.setPlaceholderText("Required for lrc.red; you'll be prompted if empty")
+        form.addRow("lrc.red contact email:", self.lrcred_contact)
+
         self.api_base = QLineEdit(cfg.spotify_api_base)
         form.addRow("Spotify API base:", self.api_base)
         self.sp_dc = QLineEdit(get_secret("SP_DC"))
@@ -53,6 +100,14 @@ class SettingsView(QWidget):
         form.addRow("Spotify client secret:", self.cli_sec)
 
         layout.addLayout(form)
+        note = QLabel(
+            "Providers are tried top-to-bottom. Untick one to disable it. "
+            'lrc.red asks apps to identify themselves and to credit '
+            '<a href="https://lrc.red">lrc.red</a>; '
+            "NetEase/QQ use unofficial web APIs and may be rate-limited.")
+        note.setWordWrap(True)
+        note.setOpenExternalLinks(True)
+        layout.addWidget(note)
         warn = QLabel(
             "Spotify path needs your own spotify-lyrics-api instance + SP_DC. "
             "It may violate Spotify TOS — disabled unless you configure it.")
@@ -64,6 +119,17 @@ class SettingsView(QWidget):
         layout.addLayout(row)
         layout.addStretch(1)
         self.btn_save.clicked.connect(self.save)
+        self.btn_up.clicked.connect(lambda: self._move_provider(-1))
+        self.btn_down.clicked.connect(lambda: self._move_provider(1))
+
+    def _move_provider(self, delta: int):
+        row = self.providers.currentRow()
+        new_row = row + delta
+        if row < 0 or not (0 <= new_row < self.providers.count()):
+            return
+        item = self.providers.takeItem(row)
+        self.providers.insertItem(new_row, item)
+        self.providers.setCurrentRow(new_row)
 
     def save(self):
         self.cfg.synced_only = self.synced_only.isChecked()
@@ -71,6 +137,12 @@ class SettingsView(QWidget):
         self.cfg.embed_skip_mode = self.embed_mode.currentText()
         self.cfg.overwrite = self.overwrite.currentText()
         self.cfg.concurrency = self.conc.value()
+        self.cfg.provider_order = [
+            self.providers.item(i).data(Qt.ItemDataRole.UserRole)
+            for i in range(self.providers.count())
+            if self.providers.item(i).checkState() == Qt.CheckState.Checked
+        ]
+        self.cfg.lrcred_contact = self.lrcred_contact.text().strip()
         self.cfg.spotify_api_base = self.api_base.text().strip()
         self.cfg.save()
         set_secret("SP_DC", self.sp_dc.text().strip())
